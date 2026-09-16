@@ -1,39 +1,26 @@
 name: Build APK
-
-on:
-  workflow_dispatch:
-
+on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
-
-      - name: Extract project
-        run: |
+      - run: |
           mkdir project
-          unzip -o *.zip -d project
-          find project -name settings.gradle -o -name settings.gradle.kts
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build APK
-        run: |
-          PROJECT_DIR=$(dirname "$(find project -name settings.gradle -o -name settings.gradle.kts | head -1)")
-          cd "$PROJECT_DIR"
-          gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          unzip -o "*.zip" -d project
+          cd project
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            gradle assembleDebug
+          fi
+      - uses: actions/upload-artifact@v4
         with:
-          name: wasabi-editor-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          name: wasabi-apk
+          path: "**/build/outputs/apk/**/*.apk"
+          
