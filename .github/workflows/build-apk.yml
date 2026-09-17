@@ -27,11 +27,50 @@ jobs:
 
       - name: Find project
         run: |
-          GRADLEW=$(find project -type f -name gradlew -print -quit)
+          find project -type f -name gradlew -print -quit > /tmp/gradlew_path
 
-          if [ -n "$GRADLEW" ]; then
+          if [ -s /tmp/gradlew_path ]; then
+            GRADLEW=$(cat /tmp/gradlew_path)
             PROJECT_DIR=$(dirname "$GRADLEW")
             echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-            echo "gradlew found: $GRADLEW"
+            echo "Found gradlew: $GRADLEW"
           else
-            SETTINGS=$(find project -type
+            find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit > /tmp/settings_path
+
+            if [ ! -s /tmp/settings_path ]; then
+              echo "Android Gradle project not found"
+              find project -maxdepth 4 -type f | head -100
+              exit 1
+            fi
+
+            SETTINGS=$(cat /tmp/settings_path)
+            PROJECT_DIR=$(dirname "$SETTINGS")
+            echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+            echo "Found settings: $SETTINGS"
+          fi
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            gradle assembleDebug
+          fi
+
+      - name: Collect APK
+        run: |
+          mkdir -p output
+          find "$PROJECT_DIR" -type f -name "*.apk" \
+            -path "*/build/outputs/apk/*" \
+            -exec cp {} output/ \;
+
+          ls -lah output
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: محرر-الوصابي-الشامل-APK
+          path: output/*.apk
