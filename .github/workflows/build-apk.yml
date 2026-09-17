@@ -77,3 +77,23 @@ jobs:
           gh release create "$TAG" output/app-debug.apk \
             --title "محرر الوصابي الشامل APK #${GITHUB_RUN_NUMBER}" \
             --notes "نسخة APK تم بناؤها بواسطة GitHub Actions"
+      - name: Diagnose APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          script: |
+            adb install -r output/app-debug.apk
+            AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+            PACKAGE=$($AAPT dump badging output/app-debug.apk | sed -n "s/package: name='\([^']*\)'.*/\1/p")
+            echo "PACKAGE=$PACKAGE"
+            adb shell monkey -p "$PACKAGE" 1
+            sleep 8
+            adb logcat -d > logcat.txt
+            grep -iE "FATAL EXCEPTION|AndroidRuntime|Caused by:" logcat.txt | tail -100 || true
+
+      - name: Upload Crash Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-log
+          path: logcat.txt
