@@ -3,6 +3,9 @@ name: Build APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,20 +36,17 @@ jobs:
             GRADLEW=$(cat /tmp/gradlew_path)
             PROJECT_DIR=$(dirname "$GRADLEW")
             echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-            echo "Found gradlew: $GRADLEW"
           else
             find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit > /tmp/settings_path
 
             if [ ! -s /tmp/settings_path ]; then
               echo "Android Gradle project not found"
-              find project -maxdepth 4 -type f | head -100
               exit 1
             fi
 
             SETTINGS=$(cat /tmp/settings_path)
             PROJECT_DIR=$(dirname "$SETTINGS")
             echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-            echo "Found settings: $SETTINGS"
           fi
 
       - name: Build APK
@@ -69,8 +69,11 @@ jobs:
 
           ls -lah output
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: محرر-الوصابي-الشامل-APK
-          path: output/*.apk
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" output/app-debug.apk \
+            --title "محرر الوصابي الشامل APK #${GITHUB_RUN_NUMBER}" \
+            --notes "نسخة APK تم بناؤها بواسطة GitHub Actions"
