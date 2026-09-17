@@ -25,7 +25,6 @@ jobs:
       - name: Build APK
         run: |
           cd project
-          # Find the directory containing gradlew or build.gradle
           PROJECT_DIR=$(find . -name "gradlew" -exec dirname {} \; | head -n 1)
           if [ -z "$PROJECT_DIR" ]; then
             PROJECT_DIR="."
@@ -43,4 +42,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wasabi-apk
-          path: "**/build/outputs/apk/**/*.apk"   
+          path: "**/build/outputs/apk/**/*.apk"
+          
