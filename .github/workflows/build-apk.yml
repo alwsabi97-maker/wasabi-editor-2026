@@ -17,44 +17,41 @@ jobs:
       - name: Download project
         run: |
           curl -L --fail --retry 3 \
-            "https://raw.githubusercontent.com/alwsabi97-maker/wasabi-editor-2026/main/%D9%85%D8%AD%D8%B1%D8%B1_%D8%A7%D9%84%D9%88%D8%B5%D8%A7%D8%A8%D9%8A_%D8%A7%D9%84%D8%B4%D8%A7%D9%85%D9%84_Android_v4.2-2.zip" \
-            -o app.zip
+          "https://raw.githubusercontent.com/alwsabi97-maker/wasabi-editor-2026/main/%D9%85%D8%AD%D8%B1%D8%B1_%D8%A7%D9%84%D9%88%D8%B5%D8%A7%D8%A8%D9%8A_%D8%A7%D9%84%D8%B4%D8%A7%D9%85%D9%84_Android_v4.2-2.zip" \
+          -o app.zip
 
       - name: Extract project
         run: |
-          mkdir -p project
+          mkdir project
           unzip -o app.zip -d project
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
       - name: Find project
         run: |
-          GRADLEW=$(find project -type f -name gradlew -print -quit)
-
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found"
-            echo "Contents of project:"
-            find project -maxdepth 4 -type f | head -100
+          SETTINGS=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle not found"
             exit 1
           fi
-
-          PROJECT_DIR=$(dirname "$GRADLEW")
+          PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Found project: $PROJECT_DIR"
+          echo "Project found: $PROJECT_DIR"
 
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          gradle assembleDebug --no-daemon
 
       - name: Collect APK
         run: |
           mkdir -p output
-          find "$PROJECT_DIR" -type f \
-            -name "*.apk" \
+          find "$PROJECT_DIR" -type f -name "*.apk" \
             -path "*/build/outputs/apk/*" \
             -exec cp {} output/ \;
-
-          ls -lah output
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
