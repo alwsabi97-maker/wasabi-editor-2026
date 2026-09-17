@@ -25,36 +25,13 @@ jobs:
           mkdir project
           unzip -o app.zip -d project
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-
       - name: Find project
         run: |
-          SETTINGS=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
-          if [ -z "$SETTINGS" ]; then
-            echo "settings.gradle not found"
-            exit 1
-          fi
-          PROJECT_DIR=$(dirname "$SETTINGS")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Project found: $PROJECT_DIR"
+          GRADLEW=$(find project -type f -name gradlew -print -quit)
 
-      - name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
-          gradle assembleDebug --no-daemon
-
-      - name: Collect APK
-        run: |
-          mkdir -p output
-          find "$PROJECT_DIR" -type f -name "*.apk" \
-            -path "*/build/outputs/apk/*" \
-            -exec cp {} output/ \;
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: محرر-الوصابي-الشامل-APK
-          path: output/*.apk
+          if [ -n "$GRADLEW" ]; then
+            PROJECT_DIR=$(dirname "$GRADLEW")
+            echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+            echo "gradlew found: $GRADLEW"
+          else
+            SETTINGS=$(find project -type
