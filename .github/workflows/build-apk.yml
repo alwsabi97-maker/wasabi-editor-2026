@@ -17,22 +17,28 @@ jobs:
       - name: Download project
         run: |
           curl -L --fail --retry 3 \
-          "https://raw.githubusercontent.com/alwsabi97-maker/wasabi-editor-2026/main/%D9%85%D8%AD%D8%B1%D8%B1_%D8%A7%D9%84%D9%88%D8%B5%D8%A7%D8%A8%D9%8A_%D8%A7%D9%84%D8%B4%D8%A7%D9%85%D9%84_Android_v4.2-2.zip" \
-          -o app.zip
+            "https://raw.githubusercontent.com/alwsabi97-maker/wasabi-editor-2026/main/%D9%85%D8%AD%D8%B1%D8%B1_%D8%A7%D9%84%D9%88%D8%B5%D8%A7%D8%A8%D9%8A_%D8%A7%D9%84%D8%B4%D8%A7%D9%85%D9%84_Android_v4.2-2.zip" \
+            -o app.zip
 
       - name: Extract project
         run: |
-          mkdir project
+          mkdir -p project
           unzip -o app.zip -d project
 
       - name: Find project
         run: |
           GRADLEW=$(find project -type f -name gradlew -print -quit)
+
           if [ -z "$GRADLEW" ]; then
             echo "gradlew not found"
+            echo "Contents of project:"
+            find project -maxdepth 4 -type f | head -100
             exit 1
           fi
-          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
+
+          PROJECT_DIR=$(dirname "$GRADLEW")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_DIR"
 
       - name: Build APK
         run: |
@@ -43,9 +49,12 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p output
-          find "$PROJECT_DIR" -type f -name "*.apk" \
+          find "$PROJECT_DIR" -type f \
+            -name "*.apk" \
             -path "*/build/outputs/apk/*" \
             -exec cp {} output/ \;
+
+          ls -lah output
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
