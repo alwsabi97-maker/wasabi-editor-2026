@@ -36,17 +36,21 @@ jobs:
             GRADLEW=$(cat /tmp/gradlew_path)
             PROJECT_DIR=$(dirname "$GRADLEW")
             echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+            echo "Found gradlew: $GRADLEW"
           else
             find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit > /tmp/settings_path
 
             if [ ! -s /tmp/settings_path ]; then
               echo "Android Gradle project not found"
+              find project -maxdepth 4 -type f | head -100
               exit 1
             fi
 
             SETTINGS=$(cat /tmp/settings_path)
             PROJECT_DIR=$(dirname "$SETTINGS")
+            echo "PROJECT_DIR=$PROJECT_DIR"
             echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+            echo "Found settings: $SETTINGS"
           fi
 
       - name: Build APK
@@ -70,14 +74,17 @@ jobs:
           ls -lah output
 
       - name: Create GitHub Release
-            continue-on-error: true
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="apk-build-${GITHUB_RUN_NUMBER}"
+
           gh release create "$TAG" output/app-debug.apk \
+            --repo "$GITHUB_REPOSITORY" \
             --title "محرر الوصابي الشامل APK #${GITHUB_RUN_NUMBER}" \
             --notes "نسخة APK تم بناؤها بواسطة GitHub Actions"
+
       - name: Diagnose APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -85,16 +92,28 @@ jobs:
           arch: x86_64
           script: |
             adb install -r output/app-debug.apk
+
             AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
-            PACKAGE=$($AAPT dump badging output/app-debug.apk | sed -n "s/package: name='\([^']*\)'.*/\1/p")
+
+            PACKAGE=$($AAPT dump badging output/app-debug.apk | \
+              sed -n "s/package: name='\([^']*\)'.*/\1/p")
+
             echo "PACKAGE=$PACKAGE"
+
             adb shell monkey -p "$PACKAGE" 1
+
             sleep 8
+
             adb logcat -d > logcat.txt
-            grep -iE "FATAL EXCEPTION|AndroidRuntime|Caused by:" logcat.txt | tail -100 || true
+
+            grep -iE \
+              "FATAL EXCEPTION|AndroidRuntime|Caused by:" \
+              logcat.txt | tail -100 || true
 
       - name: Upload Crash Log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: crash-log
           path: logcat.txt
+          if-no-files-found: warn
