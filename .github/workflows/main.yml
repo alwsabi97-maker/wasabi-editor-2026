@@ -36,3 +36,4 @@ jobs:
         with:
           name: app-debug
           path: "${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk"
+# Build APK workflow
